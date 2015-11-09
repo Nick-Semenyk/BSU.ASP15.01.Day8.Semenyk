@@ -1,8 +1,10 @@
 ﻿using System;
+using System.CodeDom;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Runtime.Serialization;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -18,12 +20,22 @@ namespace Matrix
 
         public T this[int a, int b]
         {
-            get { return matrix[a][b]; }
+            get
+            {
+                if (a < Size && b < Size && a >=0 && b >= 0)
+                    return matrix[a][b];
+                throw new MatrixElementAccessException("There is no element in this matrix with such index");
+            }
             set
             {
-                matrix[a][b] = value;
-                EventHandler<MatrixChangeArgs> handler = MatrixChanged;
-                handler(this, new MatrixChangeArgs(a,b));
+                if (a < Size && b < Size && a >= 0 && b >= 0)
+                {
+                    matrix[a][b] = value;
+                    EventHandler<MatrixChangeArgs> handler = MatrixChanged;
+                    handler(this, new MatrixChangeArgs(a,b));
+                }
+                else
+                    throw new MatrixElementAccessException("There is no element in this matrix with such index");
             }
         }
 
@@ -63,13 +75,59 @@ namespace Matrix
             }
         } 
 
+        public static SquareMatrix<T> operator +(SquareMatrix<T> lhs, SquareMatrix<T> rhs)
+        {
+            //can use +
+            dynamic a = default(T);
+            dynamic b = default(T);
+            try
+            {
+                a = a + b;
+            }
+            catch (Exception)
+            {
+                throw new InvalidOperationException();
+            }
+            if (lhs == null || rhs == null)
+                throw new ArgumentNullException();
+            if (lhs.Size != rhs.Size)
+                throw new InvalidOperationException();
+            SquareMatrix<T> result = new SquareMatrix<T>(lhs.Size);
+            for (int i = 0; i<lhs.Size; i++)
+            {
+                for (int j = 0; j<lhs.Size; j++)
+                {
+                    dynamic leftSummand = lhs[i, j];
+                    dynamic rightSummand = rhs[i, j];
+                    dynamic sum = leftSummand + rightSummand;
+                    result[i, j] = sum;
+                }
+            }
+            return result;
+        }
+
+        public virtual void Transpose()
+        {
+            for (int i = 0; i<Size; i++)
+                for (int j = i+1; j<Size; j++)
+                {
+                    T swapValue = this[i,j];
+                    this[i,j] = this[j,i];
+                    this[j,i] = swapValue;
+                }
+        }
+
         public bool Equals(SquareMatrix<T> other)
         {
             for (int i = 0; i<matrix.Count(); i++)
             {
                 for(int j = 0; j<matrix[i].Count(); j++)
                 {
-                    if (other[i,j].Equals(matrix[i][j]))
+                    if (other[i,j] == null && matrix[i][j] == null)
+                    {
+                        continue;
+                    }
+                    if (other[i,j]?.Equals(matrix[i][j]) == true)
                     {
 
                     }
@@ -83,7 +141,7 @@ namespace Matrix
         }
     }
 
-    public class SymetricMatrix<T> : SquareMatrix<T>
+    public class SymmetricMatrix<T> : SquareMatrix<T>
     {
         public new T this[int a, int b]
         {
@@ -92,84 +150,140 @@ namespace Matrix
             {
                 //events will trigger
                 base[a, b] = value;
-                base[b, a] = value;
+                if (b != a)
+                    base[b, a] = value;
             }
         }
 
-        public SymetricMatrix(T[][] array):base(array)
+        public SymmetricMatrix(T[][] array):base(array)
         {
             for (int i = 0; i<array.Count(); i++)
             {
                 for (int j = i + 1; j<array.Count(); j++)
                 {
-                    if (base[i,j].Equals(base[j,i]))
+                    if (base[i, j] == null && base[j, i] == null)
+                    {
+                        continue;
+                    }
+                    if (base[i, j]?.Equals(base[j, i]) == true)
                     {
 
                     }
                     else
                     {
-                        throw new NotSymetricArrayException();
+                        throw new NotSymmetricArrayException();
                     }
                 }
             }
         }
 
-        public SymetricMatrix(int x) : base(x){ }
+        public SymmetricMatrix(int x) : base(x){ }
 
-
-    }
-
-
-    public class NotSquareArrayException : Exception
-    {
-        public NotSquareArrayException()
+        public override void Transpose()
         {
+
         }
 
-        public NotSquareArrayException(string message) : base(message)
+        public static SymmetricMatrix<T> operator +(SymmetricMatrix<T> lhs, SymmetricMatrix<T> rhs)
         {
-        }
-
-        public NotSquareArrayException(string message, Exception innerException) : base(message, innerException)
-        {
-        }
-
-        protected NotSquareArrayException(SerializationInfo info, StreamingContext context) : base(info, context)
-        {
-        }
-    }
-
-    public class NotSymetricArrayException : Exception
-    {
-        public NotSymetricArrayException()
-        {
-        }
-
-        public NotSymetricArrayException(string message) : base(message)
-        {
-        }
-
-        public NotSymetricArrayException(string message, Exception innerException) : base(message, innerException)
-        {
-        }
-
-        protected NotSymetricArrayException(SerializationInfo info, StreamingContext context) : base(info, context)
-        {
+            //can use +
+            dynamic a = default(T);
+            dynamic b = default(T);
+            try
+            {
+                a = a + b;
+            }
+            catch (Exception)
+            {
+                throw new InvalidOperationException();
+            }
+            if (lhs == null || rhs == null)
+                throw new ArgumentNullException();
+            if (lhs.Size != rhs.Size)
+                throw new InvalidOperationException();
+            SymmetricMatrix<T> result = new SymmetricMatrix<T>(lhs.Size);
+            for (int i = 0; i < lhs.Size; i++)
+            {
+                for (int j = i; j < lhs.Size; j++)
+                {
+                    dynamic leftSummand = lhs[i, j];
+                    dynamic rightSummand = rhs[i, j];
+                    dynamic sum = leftSummand + rightSummand;
+                    result[i, j] = sum;
+                }
+            }
+            return result;
         }
     }
 
-    public class MatrixChangeArgs : EventArgs
+    public class DiagonalMatrix<T> : SymmetricMatrix<T>
     {
-        private readonly int a;
-        private readonly int b;
-
-        public int A { get { return a; } }
-        public int B { get { return b; } }
-
-        public MatrixChangeArgs(int a, int b)
+        public new T this[int a, int b]
         {
-            this.a = a;
-            this.b = b;
+            get { return base[a, b]; }
+            set
+            {
+                if (a != b)
+                    throw new MatrixElementAccessException("Setting something other than default value in non-diagonal element will make this matrix non-diagonal");
+                base[a, a] = value;
+            }
+        }
+
+        public DiagonalMatrix(T[][] array) : base(array)
+        {
+            for (int i = 0; i < array.Count(); i++)
+            {
+                for (int j = i + 1; j < array.Count(); j++)
+                {
+                    if (base[i, j] == null && base[j, i] == null)
+                    {
+                        continue;
+                    }
+                    if (base[i, j]?.Equals(base[j, i]) == true)
+                    {
+
+                    }
+                    else
+                    {
+                        throw new NotSymmetricArrayException();
+                    }
+                }
+            }
+        }
+
+        public DiagonalMatrix(int x) : base(x) { }
+
+        public override void Transpose()
+        {
+
+        }
+
+        public static DiagonalMatrix<T> operator +(DiagonalMatrix<T> lhs, DiagonalMatrix<T> rhs)
+        {
+            //can use +
+            dynamic a = default(T);
+            dynamic b = default(T);
+            try
+            {
+                a = a + b;
+            }
+            catch (Exception)
+            {
+                throw new InvalidOperationException();
+            }
+            if (lhs == null || rhs == null)
+                throw new ArgumentNullException();
+            if (lhs.Size != rhs.Size)
+                throw new InvalidOperationException();
+            DiagonalMatrix<T> result = new DiagonalMatrix<T>(lhs.Size);
+            for (int i = 0; i < lhs.Size; i++)
+            {
+                dynamic leftSummand = lhs[i, i];
+                dynamic rightSummand = rhs[i, i];
+                dynamic sum = leftSummand + rightSummand;
+                result[i, i] = sum;
+            }
+            return result;
         }
     }
 
