@@ -1,6 +1,7 @@
 ﻿using System;
 using System.CodeDom;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Runtime.Serialization;
@@ -235,17 +236,9 @@ namespace Matrix
             {
                 for (int j = i + 1; j < array.Count(); j++)
                 {
-                    if (base[i, j] == null && base[j, i] == null)
+                    if (!default(T).Equals(array[i][j]))
                     {
-                        continue;
-                    }
-                    if (base[i, j]?.Equals(base[j, i]) == true)
-                    {
-
-                    }
-                    else
-                    {
-                        throw new NotSymmetricArrayException();
+                        throw new NotDiagonalMatrixExeption();
                     }
                 }
             }

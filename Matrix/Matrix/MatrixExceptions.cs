@@ -47,6 +47,25 @@ namespace Matrix
         }
     }
 
+    public class NotDiagonalMatrixExeption : Exception
+    {
+        public NotDiagonalMatrixExeption()
+        {
+        }
+
+        public NotDiagonalMatrixExeption(string message) : base(message)
+        {
+        }
+
+        public NotDiagonalMatrixExeption(string message, Exception innerException) : base(message, innerException)
+        {
+        }
+
+        protected NotDiagonalMatrixExeption(SerializationInfo info, StreamingContext context) : base(info, context)
+        {
+        }
+    }
+
     public class MatrixElementAccessException : Exception
     {
         public MatrixElementAccessException()
