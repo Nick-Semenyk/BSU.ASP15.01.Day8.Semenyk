@@ -140,6 +140,21 @@ namespace Matrix
             }
             return true;
         }
+
+        public override string ToString()
+        {
+            StringBuilder result = new StringBuilder();
+            for (int i = 0; i < Size; i++)
+            {
+                for (int j = 0; j < Size; j++)
+                {
+                    result.Append(matrix[i][j].ToString());
+                    result.Append(' ');
+                }
+                result.Append(Environment.NewLine);
+            }
+            return result.ToString();
+        }
     }
 
     public class SymmetricMatrix<T> : SquareMatrix<T>
