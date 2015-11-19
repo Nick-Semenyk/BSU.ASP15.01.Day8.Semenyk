@@ -1,49 +1,72 @@
 ﻿using System;
 using System.CodeDom;
+using System.Collections;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Runtime.Serialization;
-using System.Security.Cryptography.X509Certificates;
 using System.Text;
-using System.Threading.Tasks;
+using Microsoft.CSharp.RuntimeBinder;
+using static System.Math;
 
 namespace Matrix
 {
-    public class SquareMatrix<T> : IEquatable<SquareMatrix<T>>
+    public abstract class Matrix<T> : IEnumerable<T>
+    {
+        public int Size { get; protected set; }
+
+        public T this[int a, int b]
+        {
+            get { return GetValue(a, b); }
+            set { SetValue(a, b, value); }
+        }
+
+        public abstract T GetValue(int a, int b);
+
+        public abstract void SetValue(int a, int b, T value);
+
+        public IEnumerator<T> GetEnumerator()
+        {
+            for (int i = 0; i<Size; i++)
+                for (int j = 0; j<Size; j++)
+                    yield return GetValue(i, j);
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return GetEnumerator();
+        }
+    }
+
+    public class SquareMatrix<T> : Matrix<T>, IEquatable<SquareMatrix<T>>
     {
         private T[][] matrix;
 
         public event EventHandler<MatrixChangeArgs> MatrixChanged = delegate { };
 
-        public int Size { get; }
-
-        public T this[int a, int b]
+        public override T GetValue(int a, int b)
         {
-            get
+            if (a < Size && b < Size && a >= 0 && b >= 0)
+                return matrix[a][b];
+            throw new MatrixElementAccessException("There is no element in this matrix with such index");
+        }
+
+        public override void SetValue(int a, int b, T value)
+        {
+            if (a < Size && b < Size && a >= 0 && b >= 0)
             {
-                if (a < Size && b < Size && a >=0 && b >= 0)
-                    return matrix[a][b];
+                matrix[a][b] = value;
+                EventHandler<MatrixChangeArgs> handler = MatrixChanged;
+                handler(this, new MatrixChangeArgs(a, b));
+            }
+            else
                 throw new MatrixElementAccessException("There is no element in this matrix with such index");
-            }
-            set
-            {
-                if (a < Size && b < Size && a >= 0 && b >= 0)
-                {
-                    matrix[a][b] = value;
-                    EventHandler<MatrixChangeArgs> handler = MatrixChanged;
-                    handler(this, new MatrixChangeArgs(a,b));
-                }
-                else
-                    throw new MatrixElementAccessException("There is no element in this matrix with such index");
-            }
         }
 
         public SquareMatrix(T[][] array)
         {
             if (array == null)
                 throw new ArgumentNullException();
+            if (!array.Any())
+                throw new ArgumentException();
             matrix = new T[array.Count()][];
             for (int i = 0; i<array.Count(); i++)
             {
@@ -80,12 +103,12 @@ namespace Matrix
         {
             //can use +
             dynamic a = default(T);
-            dynamic b = default(T);
+            T b = default(T);
             try
             {
                 a = a + b;
             }
-            catch (Exception)
+            catch (RuntimeBinderException)
             {
                 throw new InvalidOperationException();
             }
@@ -157,33 +180,31 @@ namespace Matrix
         }
     }
 
-    public class SymmetricMatrix<T> : SquareMatrix<T>
+    public class SymmetricMatrix<T> : Matrix<T>
     {
-        public new T this[int a, int b]
-        {
-            get { return base[a, b]; }
-            set
-            {
-                //events will trigger
-                base[a, b] = value;
-                if (b != a)
-                    base[b, a] = value;
-            }
-        }
+        private T[] elements;
 
-        public SymmetricMatrix(T[][] array):base(array)
+        public SymmetricMatrix(T[][] array)
         {
+            if (array == null)
+                throw new ArgumentNullException();
+            if (!array.Any())
+                throw new ArgumentException();
+            elements = new T[array.Count() * (array.Count() - 1) / 2];
+            Size = array.Count();
             for (int i = 0; i<array.Count(); i++)
             {
-                for (int j = i + 1; j<array.Count(); j++)
+                if (array[i] == null)
+                    throw new ArgumentNullException();
+                if (array[i].Count() != array.Count())
+                    throw new NotSquareArrayException();
+                for (int j = i; j<array.Count(); j++)
                 {
-                    if (base[i, j] == null && base[j, i] == null)
+                    if (array[j] == null)
+                        throw new ArgumentNullException();
+                    if (array[i][j]?.Equals(array[j][i]) ?? (array[i][j] == null && array[j][i] == null))
                     {
-                        continue;
-                    }
-                    if (base[i, j]?.Equals(base[j, i]) == true)
-                    {
-
+                        SetValue(i, j, array[i][j]);
                     }
                     else
                     {
@@ -193,11 +214,11 @@ namespace Matrix
             }
         }
 
-        public SymmetricMatrix(int x) : base(x){ }
-
-        public override void Transpose()
+        public SymmetricMatrix(int x)
         {
-
+            if (x <= 1)
+                throw new ArgumentException();
+            elements = new T[x * (x + 1) / 2];
         }
 
         public static SymmetricMatrix<T> operator +(SymmetricMatrix<T> lhs, SymmetricMatrix<T> rhs)
@@ -230,41 +251,59 @@ namespace Matrix
             }
             return result;
         }
-    }
 
-    public class DiagonalMatrix<T> : SymmetricMatrix<T>
-    {
-        public new T this[int a, int b]
+        public override T GetValue(int a, int b)
         {
-            get { return base[a, b]; }
-            set
-            {
-                if (a != b)
-                    throw new MatrixElementAccessException("Setting something other than default value in non-diagonal element will make this matrix non-diagonal");
-                base[a, a] = value;
-            }
+            if (a < Size && b < Size && a >= 0 && b >= 0)
+                return elements[Max(a,b) * (Max(a,b) + 1) + Min(a,b)];
+            throw new MatrixElementAccessException("There is no element in this matrix with such index");
         }
 
-        public DiagonalMatrix(T[][] array) : base(array)
+        public override void SetValue(int a, int b, T value)
         {
+            if (a < Size && b < Size && a >= 0 && b >= 0)
+                elements[Max(a, b)*(Max(a, b) + 1) + Min(a, b)] = value;
+            throw new MatrixElementAccessException("There is no element in this matrix with such index");
+        }
+    }
+
+    public class DiagonalMatrix<T> : Matrix<T>
+    {
+        private T[] elements;
+        public DiagonalMatrix(T[][] array)
+        {
+            if (array == null)
+                throw new ArgumentNullException();
+            if (!array.Any())
+                throw new ArgumentException();
+            elements = new T[array.Count()];
+            Size = array.Count();
             for (int i = 0; i < array.Count(); i++)
             {
-                for (int j = i + 1; j < array.Count(); j++)
+                if (array[i] == null)
+                    throw new ArgumentNullException();
+                if (array[i].Count() != array.Count())
+                    throw new NotSquareArrayException();
+                for (int j = 0; j < array.Count(); j++)
                 {
-                    if (!default(T).Equals(array[i][j]))
+                    if (i == j)
                     {
-                        throw new NotDiagonalMatrixExeption();
+                        SetValue(i, i, array[i][j]);
+                        continue;
                     }
+                    if (!default(T).Equals(array[i][j]))
+                        throw new NotDiagonalMatrixExeption();
                 }
             }
         }
 
-        public DiagonalMatrix(int x) : base(x) { }
-
-        public override void Transpose()
+        public DiagonalMatrix(int size)
         {
-
-        }
+            if (size <= 1)
+                throw new ArgumentException();
+            elements = new T[size];
+            Size = size;
+        } 
 
         public static DiagonalMatrix<T> operator +(DiagonalMatrix<T> lhs, DiagonalMatrix<T> rhs)
         {
@@ -292,6 +331,24 @@ namespace Matrix
                 result[i, i] = sum;
             }
             return result;
+        }
+
+        public override T GetValue(int a, int b)
+        {
+            if (a < Size && b < Size && a >= 0 && b >= 0)
+                if (a == b)
+                    return elements[a];
+                else
+                    return default(T);
+            throw new MatrixElementAccessException("There is no element in this matrix with such index");
+        }
+
+        public override void SetValue(int a, int b, T value)
+        {
+            if (a < Size && b < Size && a >= 0 && b >= 0)
+                if (a == b)
+                    elements[a] = value;
+            throw new MatrixElementAccessException("There is no element in this matrix with such index");
         }
     }
 

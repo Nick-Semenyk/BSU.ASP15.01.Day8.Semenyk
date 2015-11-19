@@ -53,7 +53,7 @@ namespace Matrix.Tests
         [TestCase(0)]
         public void ConstructorDiagonalMatrixTests(int size)
         {
-            SquareMatrix<int> matr = new DiagonalMatrix<int>(size);
+            DiagonalMatrix<int> matr = new DiagonalMatrix<int>(size);
             Assert.True(matr != null);
         }
 
@@ -62,7 +62,7 @@ namespace Matrix.Tests
         [TestCase(0)]
         public void ConstructorSymmetricMatrixTests(int size)
         {
-            SquareMatrix<int> matr = new DiagonalMatrix<int>(size);
+            SymmetricMatrix<int> matr = new SymmetricMatrix<int>(size);
             Assert.True(matr != null);
         }
 
